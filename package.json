@@ -1,6 +1,6 @@
 {
   "name": "fs-write-stream-atomic",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Like `fs.createWriteStream(...)`, but atomic.",
   "main": "index.js",
   "directories": {
