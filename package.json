@@ -1,0 +1,28 @@
+{
+  "name": "fs-write-stream-atomic",
+  "version": "0.0.0",
+  "description": "Like `fs.createWriteStream(...)`, but atomic.",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "graceful-fs": "^3.0.2"
+  },
+  "devDependencies": {
+    "tap": "^0.4.12"
+  },
+  "scripts": {
+    "test": "tap test/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/npm/fs-write-stream-atomic"
+  },
+  "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/npm/fs-write-stream-atomic/issues"
+  },
+  "homepage": "https://github.com/npm/fs-write-stream-atomic"
+}
