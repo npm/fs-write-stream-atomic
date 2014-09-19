@@ -19,7 +19,6 @@ test('basic', function (t) {
 
   var verifierCalled = 0
   function verifier () {
-    console.error('verifier %j', verifierCalled)
     if (++verifierCalled < n) return
     // make sure that one of the atomic streams won.
     var res = fs.readFileSync(target, 'utf8')
@@ -36,7 +35,6 @@ test('basic', function (t) {
   }
 
   // now write something to each stream.
-  console.error('first write')
   streams.forEach(function (stream, i) {
     stream.write('first write ' + i + '\n')
   })
@@ -47,7 +45,6 @@ test('basic', function (t) {
     fs.writeFileSync(target, 'brutality!\n')
 
     // write some more stuff.
-    console.error('second write')
     streams.forEach(function (stream, i) {
       stream.write('second write ' + i + '\n')
     })
@@ -57,14 +54,12 @@ test('basic', function (t) {
       fs.unlinkSync(target)
 
       // write some more stuff.
-      console.error('third write')
       streams.forEach(function (stream, i) {
         stream.write('third write ' + i + '\n')
       })
 
       setTimeout(function () {
         fs.writeFileSync(target, 'brutality TWO!\n')
-        console.error('final write')
         streams.forEach(function (stream, i) {
           stream.end('final write ' + i + '\n')
         })
