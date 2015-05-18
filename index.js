@@ -50,7 +50,7 @@ function cleanupSync (er) {
 // When we *would* emit 'close' or 'finish', instead do our stuff
 WriteStream.prototype.emit = function (ev) {
   if (ev === 'error')
-    return cleanupSync(this)
+    return cleanupSync.call(this, arguments[1])
 
   if (ev !== 'close' && ev !== 'finish')
     return fs.WriteStream.prototype.emit.apply(this, arguments)
