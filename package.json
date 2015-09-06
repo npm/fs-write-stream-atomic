@@ -7,7 +7,7 @@
     "test": "test"
   },
   "dependencies": {
-    "graceful-fs": "^3.0.2"
+    "graceful-fs": "^4.1.2"
   },
   "devDependencies": {
     "tap": "^1.2.0"
