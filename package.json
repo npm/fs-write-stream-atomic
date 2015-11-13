@@ -7,7 +7,8 @@
     "test": "test"
   },
   "dependencies": {
-    "graceful-fs": "^4.1.2"
+    "graceful-fs": "^4.1.2",
+    "imurmurhash": "^0.1.4"
   },
   "devDependencies": {
     "standard": "^5.4.1",
