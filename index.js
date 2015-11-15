@@ -39,30 +39,21 @@ function cleanup (er) {
   }.bind(this))
 }
 
-function cleanupSync () {
-  try {
-    fs.unlinkSync(this.__atomicTmp)
-  } finally {
-    return
-  }
-}
-
 // When we *would* emit 'close' or 'finish', instead do our stuff
-WriteStream.prototype.emit = function (ev) {
-  if (ev === 'error')
-    cleanupSync.call(this)
+WriteStream.prototype.emit = function (ev, data) {
+  if (ev === 'error') {
+    cleanup.call(this, data);
+  } else if (ev === 'close' || ev === 'finish') {
+    // We handle emitting finish and close after the rename.
 
-  if (ev !== 'close' && ev !== 'finish')
-    return fs.WriteStream.prototype.emit.apply(this, arguments)
-
-  // We handle emitting finish and close after the rename.
-  if (ev === 'close' || ev === 'finish') {
     if (!this.__atomicDidStuff) {
       atomicDoStuff.call(this, function (er) {
         if (er)
           cleanup.call(this, er)
       }.bind(this))
     }
+  } else {
+    return fs.WriteStream.prototype.emit.apply(this, arguments)
   }
 }
 
