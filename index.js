@@ -1,18 +1,18 @@
 var fs = require('graceful-fs')
 var util = require('util')
-var MurmurHash3 = require('imurmurhash');
+var MurmurHash3 = require('imurmurhash')
 
 function murmurhex () {
-  var hash = MurmurHash3('');
-  for (var ii=0; ii<arguments.length; ++ii) {
-    hash.hash(hash+arguments[ii]);
+  var hash = MurmurHash3('')
+  for (var ii = 0; ii < arguments.length; ++ii) {
+    hash.hash(hash + arguments[ii])
   }
-  return hash.result();
+  return hash.result()
 }
 
 var invocations = 0
 function getTmpname (filename) {
-  return filename + "." + murmurhex(__filename, process.pid, ++invocations)
+  return filename + '.' + murmurhex(__filename, process.pid, ++invocations)
 }
 
 module.exports = WriteStream
