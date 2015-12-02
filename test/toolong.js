@@ -13,6 +13,12 @@ function repeat (times, string) {
 var target = path.resolve(__dirname, repeat(1000, 'test'))
 
 test('name too long', function (t) {
+  // 0.8 streams smh
+  if (process.version.indexOf('v0.8') !== -1) {
+    t.plan(1)
+  } else {
+    t.plan(2)
+  }
   var stream = writeStream(target)
   var hadError = false
   stream.on('error', function (er) {
@@ -22,7 +28,7 @@ test('name too long', function (t) {
     }
   })
   stream.on('close', function () {
-    t.end()
+    t.ok(hadError, 'got error before close')
   })
   stream.end()
 })
