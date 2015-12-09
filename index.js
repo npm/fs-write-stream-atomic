@@ -1,6 +1,8 @@
 var fs = require('graceful-fs')
+var PassThrough = require('readable-stream').PassThrough
 var util = require('util')
 var MurmurHash3 = require('imurmurhash')
+var iferr = require('iferr')
 
 function murmurhex () {
   var hash = MurmurHash3('')
@@ -15,28 +17,25 @@ function getTmpname (filename) {
   return filename + '.' + murmurhex(__filename, process.pid, ++invocations)
 }
 
-module.exports = WriteStream
+module.exports = WriteStreamAtomic
 
-util.inherits(WriteStream, fs.WriteStream)
-function WriteStream (path, options) {
+util.inherits(WriteStreamAtomic, PassThrough)
+
+function WriteStreamAtomic (path, options) {
   if (!options) options = {}
 
-  if (!(this instanceof WriteStream)) {
-    return new WriteStream(path, options)
+  if (!(this instanceof WriteStreamAtomic)) {
+    return new WriteStreamAtomic(path, options)
   }
 
   this.__atomicTarget = path
   this.__atomicChown = options.chown
-  this.__atomicDidStuff = false
   this.__atomicTmp = getTmpname(path)
+  this.__atomicStream = fs.WriteStream(this.__atomicTmp, options)
+  this.__atomicStream.on('error', handleError.bind(this))
 
-  fs.WriteStream.call(this, this.__atomicTmp, options)
-}
-
-function cleanup (er) {
-  fs.unlink(this.__atomicTmp, function () {
-    fs.WriteStream.prototype.emit.call(this, 'error', er)
-  }.bind(this))
+  PassThrough.call(this, options)
+  this.pipe(this.__atomicStream)
 }
 
 function cleanupSync () {
@@ -47,50 +46,33 @@ function cleanupSync () {
   }
 }
 
-// When we *would* emit 'close' or 'finish', instead do our stuff
-WriteStream.prototype.emit = function (ev) {
-  if (ev === 'error') cleanupSync.call(this)
-
-  if (ev !== 'close' && ev !== 'finish') {
-    return fs.WriteStream.prototype.emit.apply(this, arguments)
-  }
-
-  // We handle emitting finish and close after the rename.
-  if (ev === 'close' || ev === 'finish') {
-    if (!this.__atomicDidStuff) {
-      atomicDoStuff.call(this, function (er) {
-        if (er) cleanup.call(this, er)
-      }.bind(this))
-    }
-  }
+function handleError (er) {
+  cleanupSync()
+  this.emit('error', er)
 }
 
-function atomicDoStuff (cb) {
-  if (this.__atomicDidStuff) {
-    throw new Error('Already did atomic move-into-place')
-  }
-
-  this.__atomicDidStuff = true
-  if (this.__atomicChown) {
-    var uid = this.__atomicChown.uid
-    var gid = this.__atomicChown.gid
-    return fs.chown(this.__atomicTmp, uid, gid, function (er) {
-      if (er) return cb(er)
-      moveIntoPlace.call(this, cb)
-    }.bind(this))
+WriteStreamAtomic.prototype._flush = function (cb) {
+  var writeStream = this
+  if (writeStream.__atomicChown) {
+    var uid = writeStream.__atomicChown.uid
+    var gid = writeStream.__atomicChown.gid
+    return fs.chown(writeStream.__atomicTmp, uid, gid, iferr(cleanup, moveIntoPlace))
   } else {
-    moveIntoPlace.call(this, cb)
+    moveIntoPlace()
   }
-}
-
-function moveIntoPlace (cb) {
-  fs.rename(this.__atomicTmp, this.__atomicTarget, function (er) {
-    cb(er)
-    // emit finish, and then close on the next tick
-    // This makes finish/close consistent across Node versions also.
-    fs.WriteStream.prototype.emit.call(this, 'finish')
-    process.nextTick(function () {
-      fs.WriteStream.prototype.emit.call(this, 'close')
-    }.bind(this))
-  }.bind(this))
+  function cleanup (err) {
+    if (!err) return cb()
+    fs.unlink(writeStream.__atomicTmp, function () {
+      writeStream.emit('error', err)
+      cb()
+    })
+  }
+  function moveIntoPlace () {
+    fs.rename(writeStream.__atomicTmp, writeStream.__atomicTarget, function (err) {
+      cleanup(err)
+      process.nextTick(function () {
+        writeStream.emit('close')
+      })
+    })
+  }
 }
