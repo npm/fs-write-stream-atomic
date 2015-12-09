@@ -13,6 +13,7 @@
     "readable-stream": "1 || 2"
   },
   "devDependencies": {
+    "rimraf": "^2.4.4",
     "standard": "^5.4.1",
     "tap": "^2.3.1"
   },
