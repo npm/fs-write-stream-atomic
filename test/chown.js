@@ -20,19 +20,6 @@ test('chown works', function (t) {
   stream.end()
 })
 
-test('chown fails', function (t) {
-  t.plan(1)
-  if (process.getuid() === 0) {
-    t.pass("# SKIP - Can't test chown failures as root")
-    return
-  }
-  var stream = writeStream(target, {chown: {uid: 0, gid: 0}})
-  stream.on('error', function (er) {
-    t.ok(er, 'got chown error before close')
-  })
-  stream.end()
-})
-
 test('cleanup', function (t) {
   rimraf.sync(target)
   t.end()
