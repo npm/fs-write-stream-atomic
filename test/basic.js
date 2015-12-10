@@ -1,7 +1,14 @@
+var fs = require('graceful-fs')
 var test = require('tap').test
-var writeStream = require('../index.js')
-var fs = require('fs')
 var path = require('path')
+var writeStream = require('../index.js')
+
+var rename = fs.rename
+fs.rename = function (from, to, cb) {
+  setTimeout(function () {
+    rename(from, to, cb)
+  }, 100)
+}
 
 test('basic', function (t) {
   // open 10 write streams to the same file.

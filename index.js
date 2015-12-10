@@ -31,6 +31,8 @@ function WriteStreamAtomic (path, options) {
   this.__atomicTarget = path
   this.__atomicChown = options.chown
   this.__atomicTmp = getTmpname(path)
+  this.__atomicFinished = false
+  this.__atomicMoved = false
   this.__atomicStream = fs.WriteStream(this.__atomicTmp, options)
   this.__atomicStream.on('error', handleError.bind(this))
 
@@ -49,6 +51,26 @@ function cleanupSync () {
 function handleError (er) {
   cleanupSync()
   this.emit('error', er)
+}
+
+function finish () {
+  if (!this.__atomicFinished) return
+  if (!this.__atomicMoved) return
+  PassThrough.prototype.emit.call(this, 'finish')
+  process.nextTick(function () {
+    this.emit('close')
+  }.bind(this))
+}
+
+WriteStreamAtomic.prototype.emit = function (event) {
+  // We'll emit this ourselves, as we need to hold off on emitting it
+  // until after we've completed putting the final file into place.
+  // To do otherwise creats a race between finish and close ;_;
+  if (event === 'finish') {
+    this.__atomicFinished = true
+    return finish.call(this)
+  }
+  return PassThrough.prototype.emit.apply(this, arguments)
 }
 
 WriteStreamAtomic.prototype._flush = function (cb) {
@@ -70,9 +92,8 @@ WriteStreamAtomic.prototype._flush = function (cb) {
   function moveIntoPlace () {
     fs.rename(writeStream.__atomicTmp, writeStream.__atomicTarget, function (err) {
       cleanup(err)
-      process.nextTick(function () {
-        writeStream.emit('close')
-      })
+      writeStream.__atomicMoved = true
+      finish.call(writeStream)
     })
   }
 }
