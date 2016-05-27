@@ -90,8 +90,20 @@ function handleClose (writeStream) {
       writeStream.emit('close')
     })
   }
+  function trapWindowsEPERMRename(err) {
+    if (err.syscall && err.syscall === 'rename' && 
+        err.code && err.code === 'EPERM' &&
+        (/^win/).test(process.platform)
+    ) {
+      // this is a EPERM error on the rename of a temp file, we can ignore it
+      // a little janky, call end() directly
+      return end();
+    }
+    
+    cleanup(err);
+  }
   function moveIntoPlace () {
-    fs.rename(writeStream.__atomicTmp, writeStream.__atomicTarget, iferr(cleanup, end))
+    fs.rename(writeStream.__atomicTmp, writeStream.__atomicTarget, iferr(trapWindowsEPERMRename, end))
   }
   function end () {
     // We have to use our parent class directly because we suppress `finish`
