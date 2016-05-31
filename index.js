@@ -36,6 +36,8 @@ function WriteStreamAtomic (path, options) {
   }
   Writable.call(this, options)
 
+  this.__isWin = (/^win/).test(process.platform);
+
   this.__atomicTarget = path
   this.__atomicTmp = getTmpname(path)
 
@@ -91,15 +93,18 @@ function handleClose (writeStream) {
     })
   }
   function trapWindowsEPERMRename(err) {
-    if (err.syscall && err.syscall === 'rename' && 
+    if (err.syscall && err.syscall === 'rename' &&
         err.code && err.code === 'EPERM' &&
-        (/^win/).test(process.platform)
+        writeStream.__isWin
     ) {
-      // this is a EPERM error on the rename of a temp file, we can ignore it
-      // a little janky, call end() directly
-      return end();
+      // this is a EPERM error on the rename of a temp file.
+      // if the target file exists, we can ignore the EPERM error
+      if (fs.existsSync(writeStream.__atomicTarget)) {
+        // a little janky, call end() directly
+        return end();
+      }
     }
-    
+
     cleanup(err);
   }
   function moveIntoPlace () {
