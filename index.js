@@ -36,7 +36,7 @@ function WriteStreamAtomic (path, options) {
   }
   Writable.call(this, options)
 
-  this.__isWin = (/^win/).test(process.platform);
+  this.__isWin = (/^win/).test(process.platform)
 
   this.__atomicTarget = path
   this.__atomicTmp = getTmpname(path)
@@ -92,7 +92,7 @@ function handleClose (writeStream) {
       writeStream.emit('close')
     })
   }
-  function trapWindowsEPERMRename(err) {
+  function trapWindowsEPERMRename (err) {
     if (err.syscall && err.syscall === 'rename' &&
         err.code && err.code === 'EPERM' &&
         writeStream.__isWin
@@ -101,11 +101,11 @@ function handleClose (writeStream) {
       // if the target file exists, we can ignore the EPERM error
       if (fs.existsSync(writeStream.__atomicTarget)) {
         // a little janky, call end() directly
-        return end();
+        return end()
       }
     }
 
-    cleanup(err);
+    cleanup(err)
   }
   function moveIntoPlace () {
     fs.rename(writeStream.__atomicTmp, writeStream.__atomicTarget, iferr(trapWindowsEPERMRename, end))
