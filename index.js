@@ -36,7 +36,7 @@ function WriteStreamAtomic (path, options) {
   }
   Writable.call(this, options)
 
-  this.__isWin = (/^win/).test(process.platform)
+  this.__isWin = (options && options.isWin) || (/^win/).test(process.platform)
 
   this.__atomicTarget = path
   this.__atomicTmp = getTmpname(path)
