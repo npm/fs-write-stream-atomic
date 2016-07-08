@@ -36,6 +36,8 @@ function WriteStreamAtomic (path, options) {
   }
   Writable.call(this, options)
 
+  this.__isWin = options && options.hasOwnProperty('isWin') ? options.isWin : process.platform === 'win32'
+
   this.__atomicTarget = path
   this.__atomicTmp = getTmpname(path)
 
@@ -90,8 +92,23 @@ function handleClose (writeStream) {
       writeStream.emit('close')
     })
   }
+  function trapWindowsEPERMRename (err) {
+    if (err.syscall && err.syscall === 'rename' &&
+        err.code && err.code === 'EPERM' &&
+        writeStream.__isWin
+    ) {
+      // this is a EPERM error on the rename of a temp file.
+      // if the target file exists, we can ignore the EPERM error
+      if (fs.existsSync(writeStream.__atomicTarget)) {
+        // a little janky, call end() directly
+        return end()
+      }
+    }
+
+    cleanup(err)
+  }
   function moveIntoPlace () {
-    fs.rename(writeStream.__atomicTmp, writeStream.__atomicTarget, iferr(cleanup, end))
+    fs.rename(writeStream.__atomicTmp, writeStream.__atomicTarget, iferr(trapWindowsEPERMRename, end))
   }
   function end () {
     // We have to use our parent class directly because we suppress `finish`
