@@ -114,8 +114,12 @@ function handleClose (writeStream) {
                 targetHash.update(targeBuffer)
 
                 if (tmpHash.digest('hex') === targetHash.digest('hex')) {
-                  // a little janky, call end() directly
-                  return end()
+                  try {
+                    fs.unlinkSync(writeStream.__atomicTmp)
+                  } finally {
+                    // a little janky, call end() directly
+                    return end()
+                  }
                 }
 
                 return cleanup(err)
