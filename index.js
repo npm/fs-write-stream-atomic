@@ -100,18 +100,18 @@ function handleClose (writeStream) {
     ) {
       if (fs.existsSync(writeStream.__atomicTarget)) {
         fs.readFile(writeStream.__atomicTmp,
-          function (readErr, buf) {
-            if (readErr) return cleanup(err)
+          function (readTmpErr, tmpBuffer) {
+            if (readTmpErr) return cleanup(err)
 
-            var atomicTmpMD5 = md5(buf)
+            var tmpMD5 = md5(tmpBuffer)
             fs.readFile(writeStream.__atomicTarget,
-              function (readErr, buf) {
-                if (readErr) return cleanup(err)
+              function (readTargetErr, targeBuffer) {
+                if (readTargetErr) return cleanup(err)
 
-                var atomicTargetMD5 = md5(buf)
+                var targetMD5 = md5(targeBuffer)
 
-                if (atomicTmpMD5 === atomicTargetMD5) {
-                 // a little janky, call end() directly
+                if (tmpMD5 === targetMD5) {
+                  // a little janky, call end() directly
                   return end()
                 }
 
