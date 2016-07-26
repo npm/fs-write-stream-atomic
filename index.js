@@ -3,6 +3,7 @@ var Writable = require('readable-stream').Writable
 var util = require('util')
 var MurmurHash3 = require('imurmurhash')
 var iferr = require('iferr')
+var md5 = require('md5')
 
 function murmurhex () {
   var hash = MurmurHash3('')
@@ -97,15 +98,34 @@ function handleClose (writeStream) {
         err.code && err.code === 'EPERM' &&
         writeStream.__isWin
     ) {
-      // this is a EPERM error on the rename of a temp file.
-      // if the target file exists, we can ignore the EPERM error
       if (fs.existsSync(writeStream.__atomicTarget)) {
-        // a little janky, call end() directly
-        return end()
-      }
-    }
+        fs.readFile(writeStream.__atomicTmp,
+          function (readErr, buf) {
+            if (readErr) return cleanup(err)
 
-    cleanup(err)
+            var atomicTmpMD5 = md5(buf)
+            fs.readFile(writeStream.__atomicTarget,
+              function (readErr, buf) {
+                if (readErr) return cleanup(err)
+
+                var atomicTargetMD5 = md5(buf)
+
+                if (atomicTmpMD5 === atomicTargetMD5) {
+                 // a little janky, call end() directly
+                  return end()
+                }
+
+                return cleanup(err)
+              }
+            )
+          }
+        )
+      } else {
+        cleanup(err)
+      }
+    } else {
+      cleanup(err)
+    }
   }
   function moveIntoPlace () {
     fs.rename(writeStream.__atomicTmp, writeStream.__atomicTarget, iferr(trapWindowsEPERMRename, end))
