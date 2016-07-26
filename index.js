@@ -3,7 +3,7 @@ var Writable = require('readable-stream').Writable
 var util = require('util')
 var MurmurHash3 = require('imurmurhash')
 var iferr = require('iferr')
-var md5 = require('md5')
+var crypto = require('crypto')
 
 function murmurhex () {
   var hash = MurmurHash3('')
@@ -99,18 +99,21 @@ function handleClose (writeStream) {
         writeStream.__isWin
     ) {
       if (fs.existsSync(writeStream.__atomicTarget)) {
+        var tmpHash = crypto.createHash('sha256')
+        var targetHash = crypto.createHash('sha256')
+
         fs.readFile(writeStream.__atomicTmp,
           function (readTmpErr, tmpBuffer) {
             if (readTmpErr) return cleanup(err)
 
-            var tmpMD5 = md5(tmpBuffer)
+            tmpHash.update(tmpBuffer)
             fs.readFile(writeStream.__atomicTarget,
               function (readTargetErr, targeBuffer) {
                 if (readTargetErr) return cleanup(err)
 
-                var targetMD5 = md5(targeBuffer)
+                targetHash.update(targeBuffer)
 
-                if (tmpMD5 === targetMD5) {
+                if (tmpHash.digest('hex') === targetHash.digest('hex')) {
                   // a little janky, call end() directly
                   return end()
                 }
