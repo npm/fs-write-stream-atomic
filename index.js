@@ -7,7 +7,7 @@ var iferr = require('iferr')
 function murmurhex () {
   var hash = MurmurHash3('')
   for (var ii = 0; ii < arguments.length; ++ii) {
-    hash.hash(hash + arguments[ii])
+    hash.hash('' + arguments[ii])
   }
   return hash.result()
 }
