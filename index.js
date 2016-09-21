@@ -93,41 +93,40 @@ function handleClose (writeStream) {
       writeStream.emit('close')
     })
   }
+  var tmpFileHash, targetFileHash, origionalErr
+  function compareFileHashes () {
+    if (tmpFileHash.digest('hex') === targetFileHash.digest('hex')) {
+      try {
+        // Try to remove the temporary file since the target is the same
+        fs.unlinkSync(writeStream.__atomicTmp)
+      } finally {
+        // a little janky, call end() directly
+        return end()
+      }
+    }
+    return cleanup(origionalErr)
+  }
+  function getTargetFileHash (readTargetErr, targerBuffer) {
+    if (readTargetErr) return cleanup(origionalErr)
+    targetFileHash.update(targerBuffer)
+    compareFileHashes()
+  }
+  function getTmpFileHash (readTmpErr, tmpBuffer) {
+    if (readTmpErr) return cleanup(origionalErr)
+    tmpFileHash.update(tmpBuffer)
+    fs.readFile(writeStream.__atomicTarget, getTargetFileHash)
+  }
   function trapWindowsEPERMRename (err) {
     if (err.syscall && err.syscall === 'rename' &&
         err.code && err.code === 'EPERM' &&
         writeStream.__isWin
     ) {
-      if (fs.existsSync(writeStream.__atomicTarget)) {
-        var tmpHash = crypto.createHash('sha256')
-        var targetHash = crypto.createHash('sha256')
-
-        fs.readFile(writeStream.__atomicTmp,
-          function (readTmpErr, tmpBuffer) {
-            if (readTmpErr) return cleanup(err)
-
-            tmpHash.update(tmpBuffer)
-            fs.readFile(writeStream.__atomicTarget,
-              function (readTargetErr, targeBuffer) {
-                if (readTargetErr) return cleanup(err)
-
-                targetHash.update(targeBuffer)
-
-                if (tmpHash.digest('hex') === targetHash.digest('hex')) {
-                  try {
-                    fs.unlinkSync(writeStream.__atomicTmp)
-                  } finally {
-                    // a little janky, call end() directly
-                    return end()
-                  }
-                }
-
-                return cleanup(err)
-              }
-            )
-          }
-        )
-      } else {
+      tmpFileHash = crypto.createHash('sha256')
+      targetFileHash = crypto.createHash('sha256')
+      origionalErr = err
+      try {
+        fs.readFile(writeStream.__atomicTmp, getTmpFileHash)
+      } catch (e) {
         cleanup(err)
       }
     } else {
