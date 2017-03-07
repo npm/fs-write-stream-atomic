@@ -3,6 +3,7 @@ var Writable = require('readable-stream').Writable
 var util = require('util')
 var MurmurHash3 = require('imurmurhash')
 var iferr = require('iferr')
+var crypto = require('crypto')
 
 function murmurhex () {
   var hash = MurmurHash3('')
@@ -35,6 +36,8 @@ function WriteStreamAtomic (path, options) {
     return new WriteStreamAtomic(path, options)
   }
   Writable.call(this, options)
+
+  this.__isWin = options && options.hasOwnProperty('isWin') ? options.isWin : process.platform === 'win32'
 
   this.__atomicTarget = path
   this.__atomicTmp = getTmpname(path)
@@ -90,8 +93,48 @@ function handleClose (writeStream) {
       writeStream.emit('close')
     })
   }
+  var tmpFileHash, targetFileHash, origionalErr
+  function compareFileHashes () {
+    if (tmpFileHash.digest('hex') === targetFileHash.digest('hex')) {
+      try {
+        // Try to remove the temporary file since the target is the same
+        fs.unlinkSync(writeStream.__atomicTmp)
+      } finally {
+        // a little janky, call end() directly
+        return end()
+      }
+    }
+    return cleanup(origionalErr)
+  }
+  function getTargetFileHash (readTargetErr, targerBuffer) {
+    if (readTargetErr) return cleanup(origionalErr)
+    targetFileHash.update(targerBuffer)
+    compareFileHashes()
+  }
+  function getTmpFileHash (readTmpErr, tmpBuffer) {
+    if (readTmpErr) return cleanup(origionalErr)
+    tmpFileHash.update(tmpBuffer)
+    fs.readFile(writeStream.__atomicTarget, getTargetFileHash)
+  }
+  function trapWindowsEPERMRename (err) {
+    if (err.syscall && err.syscall === 'rename' &&
+        err.code && err.code === 'EPERM' &&
+        writeStream.__isWin
+    ) {
+      tmpFileHash = crypto.createHash('sha256')
+      targetFileHash = crypto.createHash('sha256')
+      origionalErr = err
+      try {
+        fs.readFile(writeStream.__atomicTmp, getTmpFileHash)
+      } catch (e) {
+        cleanup(err)
+      }
+    } else {
+      cleanup(err)
+    }
+  }
   function moveIntoPlace () {
-    fs.rename(writeStream.__atomicTmp, writeStream.__atomicTarget, iferr(cleanup, end))
+    fs.rename(writeStream.__atomicTmp, writeStream.__atomicTarget, iferr(trapWindowsEPERMRename, end))
   }
   function end () {
     // We have to use our parent class directly because we suppress `finish`
