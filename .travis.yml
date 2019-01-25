@@ -3,9 +3,7 @@ sudo: false
 before_install:
     - "npm -g install npm"
 node_js:
-  - "0.8"
-  - "0.10"
-  - "0.12"
-  - "iojs"
-  - "4"
-  - "5"
+  - "10"
+  - "8"
+  - "6"
+  - "11"
