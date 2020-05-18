@@ -4,6 +4,7 @@ var util = require('util')
 var MurmurHash3 = require('imurmurhash')
 var iferr = require('iferr')
 var crypto = require('crypto')
+var threadId = require('./thread-id')
 
 function murmurhex () {
   var hash = MurmurHash3('')
@@ -15,7 +16,7 @@ function murmurhex () {
 
 var invocations = 0
 function getTmpname (filename) {
-  return filename + '.' + murmurhex(__filename, process.pid, ++invocations)
+  return filename + '.' + murmurhex(__filename, process.pid, threadId, ++invocations)
 }
 
 var setImmediate = global.setImmediate || setTimeout
